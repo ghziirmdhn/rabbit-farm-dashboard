@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.herokuapp.com wss://*.firebaseio.com; img-src 'self' data:;">
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="description" content="Dashboard monitoring dan kontrol kandang kelinci berbasis IoT">
   
   <title>🐰 Rabbit Farm IoT Dashboard</title>
@@ -319,6 +316,17 @@
       100% { transform: rotate(360deg); }
     }
     
+    .debug-info {
+      background: rgba(0,0,0,0.8);
+      color: #0f0;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      font-family: monospace;
+      font-size: 0.9em;
+      display: none;
+    }
+    
     @media (max-width: 768px) {
       h1 {
         font-size: 1.8em;
@@ -349,6 +357,8 @@
       <div class="spinner"></div>
       <div>Menghubungkan ke Firebase...</div>
     </div>
+    
+    <div id="debugInfo" class="debug-info"></div>
     
     <div id="mainContent" style="display: none;">
       <!-- Status & Sensor Data -->
@@ -493,6 +503,17 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   
   <script>
+    // Debug logging
+    function debugLog(msg, type) {
+      const debugDiv = document.getElementById('debugInfo');
+      debugDiv.style.display = 'block';
+      const timestamp = new Date().toLocaleTimeString();
+      debugDiv.innerHTML += '[' + timestamp + '] ' + (type === 'error' ? '❌' : '✅') + ' ' + msg + '<br>';
+      console.log(msg);
+    }
+    
+    debugLog('Starting dashboard initialization...');
+    
     // ===== Firebase Configuration =====
     const firebaseConfig = {
       apiKey: "AIzaSyCZlG_Jf7Cr0eLCYbTPD14A0TcenwssIS0",
@@ -504,36 +525,63 @@
       appId: "1:1091634138639:web:68fcdda963b41fdfc19d7a"
     };
     
+    debugLog('Firebase config loaded');
+    
     // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    
-    // ===== Heroku Bridge URL =====
-    const HEROKU_BRIDGE_URL = 'https://rabbit-farm-bridge-v3.herokuapp.com';
-    
-    // ===== Configuration =====
-    const CAGE_ID = 'cage1';
-    
-    // ===== Real-time Data Listener =====
-    const cageRef = database.ref('cages/' + CAGE_ID + '/latest');
-    const alertsRef = database.ref('alerts/' + CAGE_ID);
-    
-    cageRef.on('value', function(snapshot) {
-      const data = snapshot.val();
-      if (data) {
-        updateDashboard(data);
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
-      }
-    });
-    
-    alertsRef.orderByChild('acknowledged').equalTo(false).limitToLast(5).on('value', function(snapshot) {
-      const alerts = [];
-      snapshot.forEach(function(child) {
-        alerts.push({ id: child.key, data: child.val() });
+    try {
+      firebase.initializeApp(firebaseConfig);
+      debugLog('Firebase app initialized');
+      
+      const database = firebase.database();
+      debugLog('Firebase database instance created');
+      
+      // ===== Heroku Bridge URL =====
+      const HEROKU_BRIDGE_URL = 'https://rabbit-farm-bridge-v3.herokuapp.com';
+      const CAGE_ID = 'cage1';
+      
+      // ===== Connection Status Listener =====
+      database.ref('.info/connected').on('value', function(snap) {
+        if (snap.val() === true) {
+          debugLog('✅ Connected to Firebase!', 'success');
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('mainContent').style.display = 'block';
+        } else {
+          debugLog('❌ Disconnected from Firebase', 'error');
+        }
       });
-      updateAlerts(alerts.reverse());
-    });
+      
+      // ===== Real-time Data Listener =====
+      const cageRef = database.ref('cages/' + CAGE_ID + '/latest');
+      
+      cageRef.on('value', function(snapshot) {
+        const data = snapshot.val();
+        debugLog('Data update received from Firebase');
+        
+        if (data) {
+          debugLog('Data found: ' + JSON.stringify(data).substring(0, 100) + '...');
+          updateDashboard(data);
+        } else {
+          debugLog('No data at path: cages/' + CAGE_ID + '/latest', 'error');
+        }
+      }, function(error) {
+        debugLog('Firebase read error: ' + error.message, 'error');
+      });
+      
+      // ===== Alerts Listener =====
+      const alertsRef = database.ref('alerts/' + CAGE_ID);
+      
+      alertsRef.orderByChild('acknowledged').equalTo(false).limitToLast(5).on('value', function(snapshot) {
+        const alerts = [];
+        snapshot.forEach(function(child) {
+          alerts.push({ id: child.key, data: child.val() });
+        });
+        updateAlerts(alerts.reverse());
+      });
+      
+    } catch (error) {
+      debugLog('Firebase initialization failed: ' + error.message, 'error');
+      alert('Error: ' + error.message);
+    }
     
     // ===== Update Dashboard =====
     function updateDashboard(data) {
@@ -595,6 +643,8 @@
     function sendCommand(device, action, speed) {
       speed = speed || 255;
       
+      debugLog('Sending command: ' + device + ' -> ' + action);
+      
       fetch(HEROKU_BRIDGE_URL + '/api/command', {
         method: 'POST',
         headers: {
@@ -607,15 +657,15 @@
       })
       .then(function(result) {
         if (result.success) {
-          console.log('✅ Command sent:', result.command);
+          debugLog('Command sent successfully');
           alert('Perintah "' + action + '" untuk "' + device + '" berhasil dikirim!');
         } else {
-          console.error('❌ Command failed');
+          debugLog('Command failed', 'error');
           alert('Gagal mengirim perintah!');
         }
       })
       .catch(function(error) {
-        console.error('❌ Error:', error);
+        debugLog('Command error: ' + error.message, 'error');
         alert('Error: ' + error.message);
       });
     }
@@ -632,17 +682,6 @@
       if (minutes > 0) return minutes + 'm ' + (seconds % 60) + 's';
       return seconds + 's';
     }
-    
-    // ===== Connection Status =====
-    database.ref('.info/connected').on('value', function(snap) {
-      if (snap.val() === true) {
-        console.log('✅ Connected to Firebase');
-      } else {
-        console.log('❌ Disconnected from Firebase');
-        document.getElementById('status').textContent = 'Offline';
-        document.getElementById('status').className = 'status-badge status-offline';
-      }
-    });
   </script>
 </body>
 </html>
