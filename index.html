@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Monitoring Kelinci</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.herokuapp.com wss://*.firebaseio.com; img-src 'self' data:;">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="description" content="Dashboard monitoring dan kontrol kandang kelinci berbasis IoT">
+  
+  <title>🐰 Rabbit Farm IoT Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐰</text></svg>">
+  
   <style>
     * {
       margin: 0;
@@ -11,26 +18,49 @@
       box-sizing: border-box;
     }
     
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5568d3;
+      --secondary: #764ba2;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --info: #17a2b8;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       padding: 20px;
       min-height: 100vh;
     }
     
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
     
-    h1 {
-      color: white;
+    header {
       text-align: center;
+      color: white;
       margin-bottom: 30px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
-    .dashboard {
+    h1 {
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+    
+    .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 20px;
@@ -41,34 +71,39 @@
       background: white;
       border-radius: 15px;
       padding: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      transition: transform 0.3s;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s, box-shadow 0.3s;
     }
     
     .card:hover {
       transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
     }
     
     .card h2 {
-      color: #667eea;
+      color: var(--primary);
       margin-bottom: 15px;
-      font-size: 1.3em;
-      border-bottom: 2px solid #667eea;
+      font-size: 1.4em;
+      border-bottom: 3px solid var(--primary);
       padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     
     .sensor-data {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
     
     .sensor-item {
       display: flex;
       justify-content: space-between;
-      padding: 10px;
-      background: #f8f9fa;
+      padding: 12px;
+      background: var(--light);
       border-radius: 8px;
+      border-left: 4px solid var(--primary);
     }
     
     .sensor-label {
@@ -78,35 +113,65 @@
     
     .sensor-value {
       font-weight: bold;
-      color: #667eea;
-      font-size: 1.1em;
+      color: var(--primary);
+      font-size: 1.15em;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    
+    .status-online {
+      background: var(--success);
+      color: white;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-offline {
+      background: var(--danger);
+      color: white;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     
     .control-panel {
       background: white;
       border-radius: 15px;
       padding: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
     }
     
     .control-panel h2 {
-      color: #667eea;
+      color: var(--primary);
       margin-bottom: 20px;
-      border-bottom: 2px solid #667eea;
+      border-bottom: 3px solid var(--primary);
       padding-bottom: 10px;
     }
     
     .control-group {
       margin-bottom: 25px;
-      padding: 15px;
-      background: #f8f9fa;
+      padding: 18px;
+      background: var(--light);
       border-radius: 10px;
+      border-left: 4px solid var(--primary);
     }
     
     .control-group h3 {
       color: #555;
       margin-bottom: 15px;
-      font-size: 1.1em;
+      font-size: 1.15em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .button-group {
@@ -118,7 +183,7 @@
     button {
       flex: 1;
       min-width: 100px;
-      padding: 12px 20px;
+      padding: 14px 20px;
       border: none;
       border-radius: 8px;
       font-size: 1em;
@@ -126,58 +191,102 @@
       cursor: pointer;
       transition: all 0.3s;
       text-transform: uppercase;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     
     .btn-forward {
-      background: #28a745;
+      background: var(--success);
       color: white;
     }
     
     .btn-stop {
-      background: #dc3545;
+      background: var(--danger);
       color: white;
     }
     
     .btn-backward {
-      background: #ffc107;
+      background: var(--warning);
       color: #333;
     }
     
     .btn-on {
-      background: #17a2b8;
+      background: var(--info);
       color: white;
     }
     
     .btn-off {
-      background: #6c757d;
+      background: var(--dark);
       color: white;
     }
     
-    button:hover {
-      opacity: 0.8;
-      transform: scale(1.05);
+    .alerts-panel {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
     }
     
-    button:active {
-      transform: scale(0.95);
+    .alerts-panel h2 {
+      color: var(--danger);
+      margin-bottom: 20px;
+      border-bottom: 3px solid var(--danger);
+      padding-bottom: 10px;
     }
     
-    .status-badge {
-      display: inline-block;
-      padding: 5px 15px;
-      border-radius: 20px;
-      font-size: 0.9em;
-      font-weight: bold;
+    .alert-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border-left: 4px solid;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     
-    .status-online {
-      background: #28a745;
-      color: white;
+    .alert-critical {
+      background: #f8d7da;
+      border-color: var(--danger);
+      color: #721c24;
     }
     
-    .status-offline {
-      background: #dc3545;
-      color: white;
+    .alert-warning {
+      background: #fff3cd;
+      border-color: var(--warning);
+      color: #856404;
+    }
+    
+    .alert-info {
+      background: #d1ecf1;
+      border-color: var(--info);
+      color: #0c5460;
+    }
+    
+    .alert-error {
+      background: #f8d7da;
+      border-color: var(--danger);
+      color: #721c24;
+    }
+    
+    .no-alerts {
+      text-align: center;
+      padding: 30px;
+      color: #888;
+      font-style: italic;
     }
     
     .timestamp {
@@ -185,106 +294,197 @@
       color: white;
       margin-top: 20px;
       font-style: italic;
+      font-size: 0.95em;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+      font-size: 1.2em;
+    }
+    
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     
     @media (max-width: 768px) {
-      .dashboard {
+      h1 {
+        font-size: 1.8em;
+      }
+      
+      .dashboard-grid {
         grid-template-columns: 1fr;
+      }
+      
+      .button-group {
+        flex-direction: column;
+      }
+      
+      button {
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🐰 Dashboard Monitoring Kelinci</h1>
+    <header>
+      <h1>🐰 Rabbit Farm IoT Dashboard</h1>
+      <div class="subtitle">Sistem Monitoring &amp; Kontrol Kandang Kelinci - Cage 1</div>
+    </header>
     
-    <div class="dashboard">
-      <!-- Status Card -->
-      <div class="card">
-        <h2>📡 Status Sistem</h2>
-        <div class="sensor-data">
-          <div class="sensor-item">
-            <span class="sensor-label">Status:</span>
-            <span id="status" class="status-badge status-offline">Offline</span>
-          </div>
-          <div class="sensor-item">
-            <span class="sensor-label">Kandang ID:</span>
-            <span class="sensor-value" id="cageId">-</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Sensor Pakan Card -->
-      <div class="card">
-        <h2>🥕 Data Pakan</h2>
-        <div class="sensor-data">
-          <div class="sensor-item">
-            <span class="sensor-label">Jarak Pakan:</span>
-            <span class="sensor-value" id="feedDistance">-- cm</span>
-          </div>
-          <div class="sensor-item">
-            <span class="sensor-label">Berat Pakan:</span>
-            <span class="sensor-value" id="feedWeight">-- g</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Sensor Kelinci Card -->
-      <div class="card">
-        <h2>🐇 Data Kelinci</h2>
-        <div class="sensor-data">
-          <div class="sensor-item">
-            <span class="sensor-label">Terdeteksi:</span>
-            <span class="sensor-value" id="rabbitDetected">-</span>
-          </div>
-          <div class="sensor-item">
-            <span class="sensor-label">Jarak:</span>
-            <span class="sensor-value" id="rabbitDistance">-- cm</span>
-          </div>
-          <div class="sensor-item">
-            <span class="sensor-label">Berat Kelinci:</span>
-            <span class="sensor-value" id="rabbitWeight">-- g</span>
-          </div>
-        </div>
-      </div>
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div>Menghubungkan ke Firebase...</div>
     </div>
     
-    <!-- Control Panel -->
-    <div class="control-panel">
-      <h2>🎮 Panel Kontrol Aktuator</h2>
-      
-      <!-- Motor Pakan -->
-      <div class="control-group">
-        <h3>Motor Pakan (Feed)</h3>
-        <div class="button-group">
-          <button class="btn-forward" onclick="sendCommand('motor_feed', 'forward')">⬆️ Maju</button>
-          <button class="btn-stop" onclick="sendCommand('motor_feed', 'stop')">⏹️ Stop</button>
-          <button class="btn-backward" onclick="sendCommand('motor_feed', 'backward')">⬇️ Mundur</button>
+    <div id="mainContent" style="display: none;">
+      <!-- Status & Sensor Data -->
+      <div class="dashboard-grid">
+        <!-- Status Card -->
+        <div class="card">
+          <h2>📡 Status Sistem</h2>
+          <div class="sensor-data">
+            <div class="sensor-item">
+              <span class="sensor-label">Status:</span>
+              <span id="status" class="status-badge status-offline">Offline</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">Kandang:</span>
+              <span class="sensor-value" id="cageId">cage1</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">WiFi Signal:</span>
+              <span class="sensor-value" id="wifiSignal">-- dBm</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">Uptime:</span>
+              <span class="sensor-value" id="uptime">--</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sensor Pakan -->
+        <div class="card">
+          <h2>🥕 Data Pakan</h2>
+          <div class="sensor-data">
+            <div class="sensor-item">
+              <span class="sensor-label">Jarak Sensor:</span>
+              <span class="sensor-value" id="feedDistance">-- cm</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">Berat Wadah:</span>
+              <span class="sensor-value" id="feedWeight">-- g</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">Status Pakan:</span>
+              <span class="sensor-value" id="feedStatus">--</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sensor Kelinci -->
+        <div class="card">
+          <h2>🐇 Data Kelinci</h2>
+          <div class="sensor-data">
+            <div class="sensor-item">
+              <span class="sensor-label">Terdeteksi:</span>
+              <span class="sensor-value" id="rabbitDetected">--</span>
+            </div>
+            <div class="sensor-item">
+              <span class="sensor-label">Jarak:</span>
+              <span class="sensor-value" id="rabbitDistance">-- cm</span>
+            </div>
+          </div>
         </div>
       </div>
       
-      <!-- Motor Limbah -->
-      <div class="control-group">
-        <h3>Motor Limbah (Waste)</h3>
-        <div class="button-group">
-          <button class="btn-forward" onclick="sendCommand('motor_waste', 'forward')">⬆️ Maju</button>
-          <button class="btn-stop" onclick="sendCommand('motor_waste', 'stop')">⏹️ Stop</button>
-          <button class="btn-backward" onclick="sendCommand('motor_waste', 'backward')">⬇️ Mundur</button>
+      <!-- Alerts Panel -->
+      <div class="alerts-panel">
+        <h2>⚠️ Alerts &amp; Notifikasi</h2>
+        <div id="alertsContainer">
+          <div class="no-alerts">Tidak ada alert saat ini 🎉</div>
         </div>
       </div>
       
-      <!-- Relay -->
-      <div class="control-group">
-        <h3>Relay Control</h3>
-        <div class="button-group">
-          <button class="btn-on" onclick="sendCommand('relay', 'on')">🔌 ON</button>
-          <button class="btn-off" onclick="sendCommand('relay', 'off')">⚫ OFF</button>
+      <!-- Control Panel -->
+      <div class="control-panel">
+        <h2>🎮 Panel Kontrol Aktuator</h2>
+        
+        <!-- Motor Pakan -->
+        <div class="control-group">
+          <h3>⚙️ Motor Pakan (Feed)</h3>
+          <div class="button-group">
+            <button class="btn-forward" onclick="sendCommand('motor_feed', 'forward')" aria-label="Motor pakan maju">
+              ⬆️ Maju
+            </button>
+            <button class="btn-stop" onclick="sendCommand('motor_feed', 'stop')" aria-label="Motor pakan stop">
+              ⏹️ Stop
+            </button>
+            <button class="btn-backward" onclick="sendCommand('motor_feed', 'backward')" aria-label="Motor pakan mundur">
+              ⬇️ Mundur
+            </button>
+          </div>
+        </div>
+        
+        <!-- Motor Limbah -->
+        <div class="control-group">
+          <h3>⚙️ Motor Limbah (Waste)</h3>
+          <div class="button-group">
+            <button class="btn-forward" onclick="sendCommand('motor_waste', 'forward')" aria-label="Motor limbah maju">
+              ⬆️ Maju
+            </button>
+            <button class="btn-stop" onclick="sendCommand('motor_waste', 'stop')" aria-label="Motor limbah stop">
+              ⏹️ Stop
+            </button>
+            <button class="btn-backward" onclick="sendCommand('motor_waste', 'backward')" aria-label="Motor limbah mundur">
+              ⬇️ Mundur
+            </button>
+          </div>
+        </div>
+        
+        <!-- Relay -->
+        <div class="control-group">
+          <h3>🔌 Relay Control</h3>
+          <div class="button-group">
+            <button class="btn-on" onclick="sendCommand('relay', 'on')" aria-label="Relay on">
+              💡 ON
+            </button>
+            <button class="btn-off" onclick="sendCommand('relay', 'off')" aria-label="Relay off">
+              ⚫ OFF
+            </button>
+          </div>
+        </div>
+        
+        <!-- System Commands -->
+        <div class="control-group">
+          <h3>🔧 Sistem</h3>
+          <div class="button-group">
+            <button class="btn-on" onclick="sendCommand('system', 'tare_loadcell')" aria-label="Tare load cell">
+              📊 Tare Load Cell
+            </button>
+            <button class="btn-on" onclick="sendCommand('system', 'restart')" aria-label="Restart ESP32">
+              🔄 Restart ESP32
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-    
-    <div class="timestamp">
-      Last Update: <span id="lastUpdate">-</span>
+      
+      <div class="timestamp">
+        Last Update: <span id="lastUpdate">--</span>
+      </div>
     </div>
   </div>
 
@@ -295,13 +495,13 @@
   <script>
     // ===== Firebase Configuration =====
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyCZlG_Jf7Cr0eLCYbTPD14A0TcenwssIS0",
+      authDomain: "rabbit-farm-iot-128f1.firebaseapp.com",
+      databaseURL: "https://rabbit-farm-iot-128f1-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "rabbit-farm-iot-128f1",
+      storageBucket: "rabbit-farm-iot-128f1.firebasestorage.app",
+      messagingSenderId: "1091634138639",
+      appId: "1:1091634138639:web:68fcdda963b41fdfc19d7a"
     };
     
     // Initialize Firebase
@@ -309,63 +509,132 @@
     const database = firebase.database();
     
     // ===== Heroku Bridge URL =====
-    const HEROKU_BRIDGE_URL = 'https://your-app-name.herokuapp.com';
+    const HEROKU_BRIDGE_URL = 'https://rabbit-farm-bridge-v3.herokuapp.com';
+    
+    // ===== Configuration =====
+    const CAGE_ID = 'cage1';
     
     // ===== Real-time Data Listener =====
-    const cageRef = database.ref('cages/cage1/latest');
+    const cageRef = database.ref('cages/' + CAGE_ID + '/latest');
+    const alertsRef = database.ref('alerts/' + CAGE_ID);
     
-    cageRef.on('value', (snapshot) => {
+    cageRef.on('value', function(snapshot) {
       const data = snapshot.val();
       if (data) {
         updateDashboard(data);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
       }
+    });
+    
+    alertsRef.orderByChild('acknowledged').equalTo(false).limitToLast(5).on('value', function(snapshot) {
+      const alerts = [];
+      snapshot.forEach(function(child) {
+        alerts.push({ id: child.key, data: child.val() });
+      });
+      updateAlerts(alerts.reverse());
     });
     
     // ===== Update Dashboard =====
     function updateDashboard(data) {
+      // Status
       document.getElementById('status').textContent = 'Online';
       document.getElementById('status').className = 'status-badge status-online';
+      document.getElementById('cageId').textContent = data.cage_id || 'cage1';
+      document.getElementById('wifiSignal').textContent = (data.wifi_rssi || 0) + ' dBm';
+      document.getElementById('uptime').textContent = formatUptime(data.uptime_ms || 0);
       
-      document.getElementById('cageId').textContent = data.cage_id || '-';
-      document.getElementById('feedDistance').textContent = (data.feed_distance_cm || 0).toFixed(1) + ' cm';
+      // Feed data
+      const feedDist = data.feed_distance_cm || 0;
+      document.getElementById('feedDistance').textContent = feedDist.toFixed(1) + ' cm';
       document.getElementById('feedWeight').textContent = (data.feed_weight_g || 0).toFixed(1) + ' g';
       
+      // Feed status
+      let feedStatus = '✅ Normal';
+      if (feedDist > 25) feedStatus = '🔴 Kritis!';
+      else if (feedDist > 20) feedStatus = '⚠️ Rendah';
+      document.getElementById('feedStatus').textContent = feedStatus;
+      
+      // Rabbit data
       document.getElementById('rabbitDetected').textContent = data.rabbit_detected ? '✅ Ya' : '❌ Tidak';
       document.getElementById('rabbitDistance').textContent = (data.rabbit_distance_cm || 0).toFixed(1) + ' cm';
-      document.getElementById('rabbitWeight').textContent = (data.rabbit_weight_g || 0).toFixed(1) + ' g';
       
+      // Timestamp
       const timestamp = new Date(data.server_timestamp || Date.now());
       document.getElementById('lastUpdate').textContent = timestamp.toLocaleString('id-ID');
     }
     
+    // ===== Update Alerts =====
+    function updateAlerts(alerts) {
+      const container = document.getElementById('alertsContainer');
+      
+      if (alerts.length === 0) {
+        container.innerHTML = '<div class="no-alerts">Tidak ada alert saat ini 🎉</div>';
+        return;
+      }
+      
+      let html = '';
+      alerts.forEach(function(alert) {
+        const alertData = alert.data;
+        const severity = alertData.severity || 'info';
+        const message = alertData.message || 'No message';
+        const time = new Date(alertData.server_timestamp || Date.now()).toLocaleTimeString('id-ID');
+        
+        html += '<div class="alert-item alert-' + severity + '">';
+        html += '<div>';
+        html += '<strong>' + message + '</strong><br>';
+        html += '<small>' + time + '</small>';
+        html += '</div>';
+        html += '</div>';
+      });
+      
+      container.innerHTML = html;
+    }
+    
     // ===== Send Command Function =====
-    async function sendCommand(device, action, speed = 255) {
-      try {
-        const response = await fetch(`${HEROKU_BRIDGE_URL}/api/command`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ device, action, speed })
-        });
-        
-        const result = await response.json();
-        
+    function sendCommand(device, action, speed) {
+      speed = speed || 255;
+      
+      fetch(HEROKU_BRIDGE_URL + '/api/command', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ device: device, action: action, speed: speed })
+      })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(result) {
         if (result.success) {
           console.log('✅ Command sent:', result.command);
-          alert(`Perintah "${action}" untuk "${device}" berhasil dikirim!`);
+          alert('Perintah "' + action + '" untuk "' + device + '" berhasil dikirim!');
         } else {
           console.error('❌ Command failed');
           alert('Gagal mengirim perintah!');
         }
-      } catch (error) {
+      })
+      .catch(function(error) {
         console.error('❌ Error:', error);
         alert('Error: ' + error.message);
-      }
+      });
+    }
+    
+    // ===== Format Uptime =====
+    function formatUptime(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      
+      if (days > 0) return days + 'd ' + (hours % 24) + 'h';
+      if (hours > 0) return hours + 'h ' + (minutes % 60) + 'm';
+      if (minutes > 0) return minutes + 'm ' + (seconds % 60) + 's';
+      return seconds + 's';
     }
     
     // ===== Connection Status =====
-    database.ref('.info/connected').on('value', (snap) => {
+    database.ref('.info/connected').on('value', function(snap) {
       if (snap.val() === true) {
         console.log('✅ Connected to Firebase');
       } else {
